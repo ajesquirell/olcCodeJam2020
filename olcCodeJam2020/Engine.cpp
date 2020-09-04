@@ -36,6 +36,16 @@ private:
 		}
 	};
 
+	struct Exit {
+		olc::vf2d pos;
+		olc::vf2d size;
+		Exit(float x, float y, float wx, float wy)
+		{
+			pos = olc::vf2d(x, y);
+			size = olc::vf2d(wx, wy);
+		}
+	};
+
 	Machine player;
 	float initX, initY;
 	float playerSpeed;
@@ -50,6 +60,9 @@ private:
 
 	//Barriers
 	std::vector<Barrier*> barriers;
+
+	// Exit
+	Exit* exit;
 
 	olc::vi2d tileSize = olc::vi2d(1, 1);
 	olc::vi2d playerSize = olc::vi2d(16, 16);
@@ -82,7 +95,11 @@ public:
 
 		vPath.push_back(olc::vf2d(player.x, player.y));
 
-		barriers.push_back(new Barrier(ScreenWidth() - 50, 20, 5, 30));
+		barriers.push_back(new Barrier(ScreenWidth() - 80, 20, 30, 90));
+
+		exit = new Exit(ScreenWidth() - 30, 0, 30, ScreenHeight());
+
+		
 
 		Assets::get().LoadSprites();
 
@@ -165,9 +182,21 @@ public:
 		// Draw Barriers
 		for (int i = 0; i < barriers.size(); i++)
 		{
-			FillRect(barriers[i]->pos, barriers[i]->size, olc::GREY);
-			DrawRect(barriers[i]->pos, barriers[i]->size, olc::VERY_DARK_GREY);
+			FillRect(barriers[i]->pos, barriers[i]->size, olc::VERY_DARK_GREY);
+			FillRect(barriers[i]->pos + olc::vf2d(2, 2), barriers[i]->size - olc::vf2d(4, 4), olc::GREY);
 		}
+
+		// Draw Exit
+		FillRect(exit->pos, exit->size, olc::DARK_CYAN);
+		olc::Sprite* sprExit = new olc::Sprite(35, 8);
+		SetDrawTarget(sprExit);
+		Clear(olc::DARK_CYAN);
+		DrawString({0, 0}, "EXIT", olc::VERY_DARK_CYAN);
+		SetDrawTarget(nullptr);
+		olc::Decal* decExit = new olc::Decal(sprExit);
+		SetPixelMode(olc::Pixel::MASK);
+		DrawRotatedDecal(exit->pos + olc::vf2d(exit->size.x / 2, exit->size.y / 2 - 5), decExit, (pi / 2), { sprExit->width / 2.0f, sprExit->height / 2.0f }, { 1.3f, 1.3f });
+		SetPixelMode(olc::Pixel::NORMAL);
 
 		// Draw Path Rays
 		for (int i = 0; i < vPath.size() - 1; i++)
@@ -272,7 +301,7 @@ public:
 		if (!run)
 		{
 			DrawString(olc::vi2d(5, 5), "PATH PLANNING MODE", olc::DARK_CYAN, 2);
-			DrawString(olc::vi2d(10, ScreenHeight() - 30), "Left Click: Place points\nRight Click: Delete Points\nSpace: Run", 2);
+			DrawString(olc::vi2d(10, ScreenHeight() - 55), "Left Click: Place points\nRight Click: Delete Points\nSpace: Run", olc::WHITE, 2);
 		}
 		else
 		{
@@ -330,7 +359,8 @@ public:
 int main()
 {
 	MvM demo;
-	if (demo.Construct(960, 480, 2, 2))
+	if (demo.Construct(960, 480, 2, 2, true, false, false))
+	//if (demo.Construct(480, 240, 4, 4, false, false, false))
 		demo.Start();
 
 	return 0;
