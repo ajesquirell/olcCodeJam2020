@@ -150,6 +150,7 @@ public:
 		vLevels.push_back(new Level2);
 		vLevels.push_back(new Level3);
 		vLevels.push_back(new Level4);
+		vLevels.push_back(new Level5);
 
 		
 		// Populate levels with objects
@@ -159,7 +160,7 @@ public:
 		}
 
 		// Load first Level
-		ChangeLevel(3);
+		ChangeLevel(0);
 
 		ResetLevel();
 
@@ -509,9 +510,9 @@ public:
 			{
 				SetPixelMode(olc::Pixel::ALPHA);
 				olc::Pixel p(64, 64, 64, 205);
-				FillRect(olc::vi2d(ScreenWidth() / 5 - 10, ScreenHeight() / 3 - 30), olc::vi2d(600, 140), p);
+				FillRect(olc::vi2d(ScreenWidth() / 5 - 10, ScreenHeight() / 3 - 30), olc::vi2d(600, 180), p);
 				SetPixelMode(olc::Pixel::NORMAL);
-				DrawString(olc::vi2d(ScreenWidth() / 5, ScreenHeight() / 3 - 20), "You beat the WHOLE GAME!\nCONGRATULATIONS!!!\nThere is no prize,\nbut maybe there will be\nin the future!!!", olc::CYAN, 3);
+				DrawString(olc::vi2d(ScreenWidth() / 5, ScreenHeight() / 3 - 20), "You beat the WHOLE GAME!\nCONGRATULATIONS!!!\nThere is no prize,\nbut maybe there will be\nin the future when this\ngame inevitably takes\nover Fortnite!!!", olc::CYAN, 3);
 			}
 		}
 
