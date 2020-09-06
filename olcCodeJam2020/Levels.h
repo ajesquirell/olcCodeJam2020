@@ -16,11 +16,19 @@ struct Machine { // Player
 	bool bDead = false;
 };
 
+struct Projectile {
+	float x, y, vx, vy;
+	float fSpeed;
+	bool bActive;
+	bool bShot;
+};
+
 struct Barrier {
 	olc::vf2d pos;
 	olc::vf2d size;
 	bool bHarmful;
 	int nInteractDamage;
+	bool bActive = true;
 	Barrier(float x, float y, float wx, float wy, bool bHarm, int nDamage)
 	{
 		pos = olc::vf2d(x, y);
@@ -61,10 +69,11 @@ class Level1 : public LevelLayout
 
 void Level1::Create(olc::PixelGameEngine* pge)
 {
-	fPlayerInitX = 50.0f;
-	fPlayerInitY = 60.0f;
+	fPlayerInitX = 40.0f;
+	fPlayerInitY = 240.0f;
 
-	barriers.push_back(new Barrier(pge->ScreenWidth() / 2, 80, 30, 60, false, 0));
+	barriers.push_back(new Barrier(pge->ScreenWidth() / 7, 70, 50, 340, false, 0));
+
 
 	exit = new Exit(pge->ScreenWidth() - 30, 0, 30, pge->ScreenHeight(), false);
 }
@@ -76,12 +85,63 @@ class Level2 : public LevelLayout
 
 void Level2::Create(olc::PixelGameEngine* pge)
 {
-	fPlayerInitX = 110.0f;
-	fPlayerInitY = 90.0f;
+	fPlayerInitX = 70.0f;
+	fPlayerInitY = 100.0f;
 
 	barriers.push_back(new Barrier(pge->ScreenWidth() / 6, 60, 30, 400, false, 0));
 	barriers.push_back(new Barrier(pge->ScreenWidth() - 100, 0, 30, 100, false, 0));
 
 
 	exit = new Exit(pge->ScreenWidth() - 30, 0, 30, 50, false);
+}
+
+class Level3 : public LevelLayout
+{
+	void Create(olc::PixelGameEngine* pge) override;
+};
+
+void Level3::Create(olc::PixelGameEngine* pge)
+{
+	fPlayerInitX = 70.0f;
+	fPlayerInitY = 100.0f;
+
+	barriers.push_back(new Barrier(pge->ScreenWidth() / 2, 398, 250, 60, false, 0));
+	barriers.push_back(new Barrier(pge->ScreenWidth() / 6, 0, 30, 390, false, 0));
+	barriers.push_back(new Barrier(pge->ScreenWidth() - 100, 0, 30, 100, false, 0));
+	barriers.push_back(new Barrier(pge->ScreenWidth() - 90, 120, 60, 10, false, 0));
+	barriers.push_back(new Barrier(pge->ScreenWidth() - 400, 30, 150, 90, false, 0));
+
+
+
+
+	exit = new Exit(pge->ScreenWidth() - 30, 0, 30, 50, false);
+}
+
+class Level4 : public LevelLayout
+{
+	void Create(olc::PixelGameEngine* pge) override;
+};
+
+void Level4::Create(olc::PixelGameEngine* pge)
+{
+	fPlayerInitX = 700.0f;
+	fPlayerInitY = 390.0f;
+
+	barriers.push_back(new Barrier(1, 1, 250, 20, false, 0));
+	barriers.push_back(new Barrier(1, 120, 50, 20, false, 0));
+	barriers.push_back(new Barrier(100, 120, 50, 20, false, 0));
+	barriers.push_back(new Barrier(200, 120, 50, 20, false, 0));
+	barriers.push_back(new Barrier(300, 120, 50, 20, false, 0));
+	barriers.push_back(new Barrier(400, 120, 50, 20, false, 0));
+	barriers.push_back(new Barrier(500, 1, 30, 90, false, 0));
+
+	//barriers.push_back(new Barrier(pge->ScreenWidth() / 6, 0, 30, 390, false, 0));
+	//barriers.push_back(new Barrier(pge->ScreenWidth() - 100, 0, 30, 100, false, 0));
+	//barriers.push_back(new Barrier(pge->ScreenWidth() - 90, 120, 60, 10, false, 0));
+	//barriers.push_back(new Barrier(pge->ScreenWidth() - 400, 30, 150, 90, false, 0));
+
+
+
+
+	exit = new Exit(1, 30, 40, 40, false);
 }

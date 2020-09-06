@@ -22,6 +22,7 @@ private:
 
 	Machine* player;
 	float playerSizeX, playerSizeY;
+	Projectile* p;
 
 	std::unique_ptr<olc::Sprite> sprBody;
 	std::unique_ptr<olc::Decal> decBody;
@@ -75,26 +76,21 @@ private:
 
 	// Scores
 	int nCurrentLevel = 0;
-	int nLevelAttempts = 1;
+	int nLevelAttempts = 0;
 
 public:
 	bool OnUserCreate() override
 	{
 		player = new Machine();
-		player->initX = 50.0f;
-		player->initY = 60.0f;
 		player->fSpeed = 20.0f;
 
-		player->x = player->initX;
-		player->y = player->initY;
 		player->vx = 0.0f;
 		player->vy = 0.0f;
 		player->angleBody = 0.0f;
 		player->nHealth = 2;
 
-		//barriers.push_back(new Barrier(ScreenWidth() - 500, 100, 50, 90, false, 0));
+		p = new Projectile();
 
-		//exit = new Exit(ScreenWidth() - 30, 0, 30, ScreenHeight(), false);
 		tempExitSign = new olc::Sprite(35, 8);
 		SetDrawTarget(tempExitSign);
 		Clear(olc::DARK_CYAN);
@@ -152,6 +148,9 @@ public:
 		// Load Levels
 		vLevels.push_back(new Level1);
 		vLevels.push_back(new Level2);
+		vLevels.push_back(new Level3);
+		vLevels.push_back(new Level4);
+
 		
 		// Populate levels with objects
 		for (int i = 0; i < vLevels.size(); i++)
@@ -160,7 +159,9 @@ public:
 		}
 
 		// Load first Level
-		ChangeLevel(0);
+		ChangeLevel(3);
+
+		ResetLevel();
 
 		return true;
 	}
@@ -197,12 +198,23 @@ public:
 				//player->vx = player->fSpeed + 40;
 			}
 
-			if (GetMouse(0).bReleased && !run)
+			if (GetMouse(0).bReleased && !run && !player->bDead)
 			{
 				player->vPath.push_back(olc::vf2d(GetMouseX(), GetMouseY()));
 			}
+			if (GetMouse(0).bReleased && run && !player->bDead && !p->bActive && !p->bShot)
+			{
+				p->bActive = true;
+				p->bShot = true;
+				p->fSpeed = 300.0f;
+				p->x = player->x + (4 * cos(player->angleTurret - (pi / 2)));
+				p->y = player->y + (4 * sin(player->angleTurret - (pi / 2)));
+				p->vx = p->fSpeed * cos(player->angleTurret - (pi / 2));
+				p->vy = p->fSpeed * sin(player->angleTurret - (pi / 2));
+			}
 
-			if (GetMouse(1).bReleased && !run) // Right click to delete points, but only if not running. Otherwise vector can be out of range if currently going to point we delete
+
+			if (GetMouse(1).bReleased && !run && !player->bDead) // Right click to delete points, but only if not running. Otherwise vector can be out of range if currently going to point we delete
 			{
 				if (player->vPath.size() > 1)
 					player->vPath.pop_back();
@@ -213,8 +225,12 @@ public:
 				if (!run && player->vPath.size() > 1 && !player->bDead && !bLevelSuccess) // Only run if not already running
 				{
 					run = true;
-					//player->x = initX;
-					//player->y = initY;
+					nLevelAttempts++;
+					// Reset Barriers
+					for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
+					{
+						vLevels[nCurrentLevel]->barriers[i]->bActive = true;
+					}
 				}
 				if (player->bDead) // If player is dead
 				{
@@ -250,12 +266,19 @@ public:
 		// Barrier collision detect
 		for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
 		{
-			if (BarrierCollisionDetect(vLevels[nCurrentLevel]->barriers[i]))
+			if (BarrierCollisionDetect(vLevels[nCurrentLevel]->barriers[i]) && vLevels[nCurrentLevel]->barriers[i]->bActive)
 			{
 				player->bDead = true;
 				run = false;
 				player->vx = 0.0f;
 				player->vy = 0.0f;
+			}
+
+			// Check projectiles hitting
+			if (PointVsRect(olc::vf2d(p->x, p->y), vLevels[nCurrentLevel]->barriers[i]) && vLevels[nCurrentLevel]->barriers[i]->bActive)
+			{
+				vLevels[nCurrentLevel]->barriers[i]->bActive = false;
+				p->bActive = false;
 			}
 		}
 
@@ -268,18 +291,28 @@ public:
 			player->vy = 0.0f;
 		}
 
-		/*DrawRect(olc::vi2d(player->x - playerSizeX/2.0f, player->y - playerSizeY/2.0f), olc::vi2d(playerSizeX, playerSizeY), olc::YELLOW);
-		if (ExitCollisionDetect(exit))
-			DrawRect(olc::vi2d(exit->pos.x, exit->pos.y), olc::vi2d(exit->size.x, exit->size.y), olc::BLUE);*/
+		//Projectile out of range
+		if (p->x > ScreenWidth() || p->x < 0 || p->y > ScreenHeight() || p->y < 0)
+			p->bActive = false;
+
+
+		//DrawRect(olc::vi2d(player->x - playerSizeX/2.0f, player->y - playerSizeX/2.0f), olc::vi2d(playerSizeX, playerSizeX), olc::YELLOW);
+		//if (ExitCollisionDetect(exit))
+			//DrawRect(olc::vi2d(exit->pos.x, exit->pos.y), olc::vi2d(exit->size.x, exit->size.y), olc::BLUE);
 
 		player->x += player->vx * fElapsedTime;
 		player->y += player->vy * fElapsedTime;
+		p->x += p->vx * fElapsedTime;
+		p->y += p->vy * fElapsedTime;
 
 		// Draw Barriers
 		for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
 		{
-			FillRect(vLevels[nCurrentLevel]->barriers[i]->pos, vLevels[nCurrentLevel]->barriers[i]->size, olc::VERY_DARK_GREY);
-			FillRect(vLevels[nCurrentLevel]->barriers[i]->pos + olc::vf2d(2, 2), vLevels[nCurrentLevel]->barriers[i]->size - olc::vf2d(4, 4), olc::GREY);
+			if (vLevels[nCurrentLevel]->barriers[i]->bActive)
+			{
+				FillRect(vLevels[nCurrentLevel]->barriers[i]->pos, vLevels[nCurrentLevel]->barriers[i]->size, olc::VERY_DARK_GREY);
+				FillRect(vLevels[nCurrentLevel]->barriers[i]->pos + olc::vf2d(2, 2), vLevels[nCurrentLevel]->barriers[i]->size - olc::vf2d(4, 4), olc::GREY);
+			}
 		}
 
 		// Rotate and Draw Exit sign and Exit Bar
@@ -383,6 +416,9 @@ public:
 			tTurret.Rotate(player->angleTurret);
 			tTurret.Scale(0.1, 0.1);
 			tTurret.Translate(player->x, player->y);
+
+			// Projectile
+			if (p->bActive) FillCircle(olc::vi2d(p->x, p->y), 3, olc::MAGENTA);
 
 
 			//SetPixelMode(olc::Pixel::MASK);
@@ -525,7 +561,16 @@ public:
 		player->x = vLevels[nCurrentLevel]->fPlayerInitX;
 		player->y = vLevels[nCurrentLevel]->fPlayerInitY;
 		bLevelSuccess = false;
-		
+
+		// Reset Projectile
+		p->bShot = false;
+		p->bActive = false;
+
+		// Reset Barriers
+		for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
+		{
+			vLevels[nCurrentLevel]->barriers[i]->bActive = true;
+		}
 		// Reset path
 		int vecSize = player->vPath.size();
 		for (int i = 0; i < vecSize; i++)
@@ -585,7 +630,7 @@ public:
 	bool BarrierCollisionDetect(Barrier* b)
 	{
 		if (player->x - playerSizeX / 2.0f < b->pos.x + b->size.x && player->x + playerSizeX / 2.0f > b->pos.x
-			&& player->y - playerSizeY / 2.0f < b->pos.y + b->size.y && player->y + playerSizeY / 2.0f > b->pos.y)
+			&& player->y - playerSizeX / 2.0f < b->pos.y + b->size.y && player->y + playerSizeX / 2.0f > b->pos.y)
 			return true;
 		else
 			return false;
