@@ -5,8 +5,9 @@
 #define OLC_PGEX_GRAPHICS2D
 #include "olcPGEX_Graphics2D.h"
 #include "Assets.h"
+#include "Levels.h"
 
-#define pi 3.14159f
+constexpr auto pi = 3.14159f;
 
 class MvM : public olc::PixelGameEngine
 {
@@ -17,61 +18,10 @@ public:
 	}
 
 private:
-	struct Machine { // Player
-		float x;
-		float y;
-		float vx;
-		float vy;
-		float initX, initY;
-		float angleBody;
-		float angleTurret;
-
-		std::vector<olc::vf2d> vPath;
-		float fSpeed;
-		int nHealth;
-		bool bDead = false;
-	};
-
-	struct Barrier {
-		olc::vf2d pos;
-		olc::vf2d size;
-		bool bHarmful;
-		int nInteractDamage;
-		Barrier(float x, float y, float wx, float wy, bool bHarm, int nDamage)
-		{
-			pos = olc::vf2d(x, y);
-			size = olc::vf2d(wx, wy);
-			bHarmful = bHarm;
-			nInteractDamage = nDamage;
-		}
-	};
-
-	struct Exit {
-		olc::vf2d pos;
-		olc::vf2d size;
-		bool bGated;
-		bool bGateOpen = false; // Gate starts closed
-		Exit(float x, float y, float wx, float wy, bool bGate)
-		{
-			pos = olc::vf2d(x, y);
-			size = olc::vf2d(wx, wy);
-			bGated = bGate;
-		}
-	};
-
-	struct LevelLayout {
-		std::vector<Barrier*> barriers;
-		//std::vector<Enemy*> enemies;
-		//std::vector<Item*> items;
-		Exit* exit;
-		float fPlayerInitX, fPlayerInitY;
-
-	};
-	
-	std::vector<LevelLayout> levels;
-	LevelLayout currentLevel;
+	std::vector<LevelLayout*> vLevels;
 
 	Machine* player;
+	float playerSizeX, playerSizeY;
 
 	std::unique_ptr<olc::Sprite> sprBody;
 	std::unique_ptr<olc::Decal> decBody;
@@ -97,13 +47,17 @@ private:
 	std::unique_ptr<olc::Decal> decFire7;
 	std::unique_ptr<olc::Decal> decFire8;
 
+	std::unique_ptr<olc::Sprite> sprBack1;
+	std::unique_ptr<olc::Decal> decBack;
+	olc::Sprite* sprBack;
 
 	//Barriers
-	std::vector<Barrier*> barriers;
+	//std::vector<Barrier*> barriers;
 
 	// Exit
-	Exit* exit;
+	//Exit* exit;
 	olc::Sprite* tempExitSign;
+	bool bLevelSuccess = false;
 
 	olc::vi2d tileSize = olc::vi2d(1, 1);
 	olc::vi2d playerSize = olc::vi2d(16, 16);
@@ -120,8 +74,8 @@ private:
 	float timeFire;
 
 	// Scores
-	int nCurrentLevel;
-	int nLevelAttempts;
+	int nCurrentLevel = 0;
+	int nLevelAttempts = 1;
 
 public:
 	bool OnUserCreate() override
@@ -138,12 +92,9 @@ public:
 		player->angleBody = 0.0f;
 		player->nHealth = 2;
 
+		//barriers.push_back(new Barrier(ScreenWidth() - 500, 100, 50, 90, false, 0));
 
-		player->vPath.push_back(olc::vf2d(player->x, player->y));
-
-		barriers.push_back(new Barrier(ScreenWidth() - 80, 20, 30, 90, false, 0));
-
-		exit = new Exit(ScreenWidth() - 30, 0, 30, ScreenHeight(), false);
+		//exit = new Exit(ScreenWidth() - 30, 0, 30, ScreenHeight(), false);
 		tempExitSign = new olc::Sprite(35, 8);
 		SetDrawTarget(tempExitSign);
 		Clear(olc::DARK_CYAN);
@@ -158,6 +109,11 @@ public:
 		sprBody = std::make_unique<olc::Sprite>("../Sprites/Tank_Body.png");
 		sprTurret = std::make_unique<olc::Sprite>("../Sprites/Tank_Turret.png");
 		sprWheels = std::make_unique<olc::Sprite>("../Sprites/Tank_Wheels.png");
+
+		//Background
+		sprBack1 = std::make_unique<olc::Sprite>("../Sprites/background2.png");
+		decBack = std::make_unique<olc::Decal>(sprBack1.get());
+		sprBack = new olc::Sprite("../Sprites/background.png");
 
 		// Create Decals
 		decBody = std::make_unique<olc::Decal>(sprBody.get());
@@ -182,18 +138,39 @@ public:
 		decFire7 = std::make_unique<olc::Decal>(sprFire7.get());
 		decFire8 = std::make_unique<olc::Decal>(sprFire8.get());
 
+		playerSizeX = sprWheels->width * 0.1f;
+		playerSizeY = sprWheels->height * 0.1f;
 
+		SetDrawTarget(sprBack);
+		DrawDecal(olc::vf2d(0.0f, 0.0f), decBack.get());
+		SetDrawTarget(nullptr);
 
 		//Sound
 		//olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 		//olc::SOUND::PlaySample(Assets::get().GetSound("LitLoop"), true); // Plays Sample C loop
+
+		// Load Levels
+		vLevels.push_back(new Level1);
+		vLevels.push_back(new Level2);
+		
+		// Populate levels with objects
+		for (int i = 0; i < vLevels.size(); i++)
+		{
+			vLevels[i]->Create(this);
+		}
+
+		// Load first Level
+		ChangeLevel(0);
 
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		Clear(olc::VERY_DARK_RED);
+		//Clear(olc::VERY_DARK_RED);
+		DrawSprite(olc::vi2d(0, 0), sprBack);
+		//DrawDecal(olc::vf2d(0.0f, 0.0f), decBack.get());
+
 
 		//player->vx = 0.0f;
 		//player->vy = 0.0f;
@@ -202,22 +179,22 @@ public:
 		{
 			if (GetKey(olc::Key::UP).bHeld)
 			{
-				player->vy = -player->fSpeed;
+				//player->vy = -player->fSpeed - 40;
 			}
 
 			if (GetKey(olc::Key::DOWN).bHeld)
 			{
-				player->vy = player->fSpeed;
+				//player->vy = player->fSpeed + 40;
 			}
 
 			if (GetKey(olc::Key::LEFT).bHeld)
 			{
-				player->angleBody -= 0.5f * fElapsedTime;
+				//player->vx = -player->fSpeed - 40;
 			}
 
 			if (GetKey(olc::Key::RIGHT).bHeld)
 			{
-				player->angleBody += 0.5f * fElapsedTime;
+				//player->vx = player->fSpeed + 40;
 			}
 
 			if (GetMouse(0).bReleased && !run)
@@ -233,7 +210,7 @@ public:
 
 			if (GetKey(olc::Key::SPACE).bReleased)
 			{
-				if (!run && player->vPath.size() > 1 && !player->bDead) // Only run if not already running
+				if (!run && player->vPath.size() > 1 && !player->bDead && !bLevelSuccess) // Only run if not already running
 				{
 					run = true;
 					//player->x = initX;
@@ -247,10 +224,22 @@ public:
 						nLevelAttempts++;//Player try count++
 					}
 				}
+				if (bLevelSuccess && nCurrentLevel != vLevels.size() - 1)
+				{
+					ChangeLevel(nCurrentLevel + 1);
+					nLevelAttempts = 1;
+					ResetLevel();
+				}
+				else if (bLevelSuccess && nCurrentLevel == vLevels.size() - 1)
+				{
+					ChangeLevel(0);
+					nLevelAttempts = 1;
+					ResetLevel();
+				}
 			}
 			if (GetKey(olc::Key::Z).bReleased)
 			{
-				player->bDead = !player->bDead;
+				//player->bDead = !player->bDead;
 			}
 		}
 
@@ -259,31 +248,47 @@ public:
 			PathUpdate(fElapsedTime, player);
 
 		// Barrier collision detect
-		for (int i = 0; i < barriers.size(); i++)
+		for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
 		{
-			if (BarrierCollisionDetect(barriers[i]))
+			if (BarrierCollisionDetect(vLevels[nCurrentLevel]->barriers[i]))
 			{
 				player->bDead = true;
+				run = false;
+				player->vx = 0.0f;
+				player->vy = 0.0f;
 			}
 		}
+
+		// If you get to the exit!
+		if (ExitCollisionDetect(vLevels[nCurrentLevel]->exit))
+		{
+			bLevelSuccess = true;
+			run = false;
+			player->vx = 0.0f;
+			player->vy = 0.0f;
+		}
+
+		/*DrawRect(olc::vi2d(player->x - playerSizeX/2.0f, player->y - playerSizeY/2.0f), olc::vi2d(playerSizeX, playerSizeY), olc::YELLOW);
+		if (ExitCollisionDetect(exit))
+			DrawRect(olc::vi2d(exit->pos.x, exit->pos.y), olc::vi2d(exit->size.x, exit->size.y), olc::BLUE);*/
 
 		player->x += player->vx * fElapsedTime;
 		player->y += player->vy * fElapsedTime;
 
 		// Draw Barriers
-		for (int i = 0; i < barriers.size(); i++)
+		for (int i = 0; i < vLevels[nCurrentLevel]->barriers.size(); i++)
 		{
-			FillRect(barriers[i]->pos, barriers[i]->size, olc::VERY_DARK_GREY);
-			FillRect(barriers[i]->pos + olc::vf2d(2, 2), barriers[i]->size - olc::vf2d(4, 4), olc::GREY);
+			FillRect(vLevels[nCurrentLevel]->barriers[i]->pos, vLevels[nCurrentLevel]->barriers[i]->size, olc::VERY_DARK_GREY);
+			FillRect(vLevels[nCurrentLevel]->barriers[i]->pos + olc::vf2d(2, 2), vLevels[nCurrentLevel]->barriers[i]->size - olc::vf2d(4, 4), olc::GREY);
 		}
 
 		// Rotate and Draw Exit sign and Exit Bar
-		FillRect(exit->pos, exit->size, olc::DARK_CYAN);
+		FillRect(vLevels[nCurrentLevel]->exit->pos, vLevels[nCurrentLevel]->exit->size, olc::DARK_CYAN);
 
 		olc::GFX2D::Transform2D tempExitTransform;
 		tempExitTransform.Translate(-tempExitSign->width / 2.0f, -tempExitSign->height / 2.0f);
 		tempExitTransform.Rotate(-(pi / 2));
-		tempExitTransform.Translate(exit->pos.x + exit->size.x / 2, exit->pos.y + exit->size.y / 2 - 5);
+		tempExitTransform.Translate(vLevels[nCurrentLevel]->exit->pos.x + vLevels[nCurrentLevel]->exit->size.x / 2, vLevels[nCurrentLevel]->exit->pos.y + vLevels[nCurrentLevel]->exit->size.y / 2);
 		SetPixelMode(olc::Pixel::MASK);
 		olc::GFX2D::DrawSprite(tempExitSign, tempExitTransform);
 		SetPixelMode(olc::Pixel::NORMAL);
@@ -392,28 +397,39 @@ public:
 		else // Player is dead
 		{
 			//Draw fire
+			SetPixelMode(olc::Pixel::MASK);
 			timeFire += fElapsedTime;
 			if (timeFire > 0.8f) timeFire = 0.0f;
 			if (timeFire >= 0.0f && timeFire < 0.1f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire1.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire1.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire1.get());
 			else if (timeFire > 0.1f && timeFire < 0.2f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire2.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire2.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire2.get());
 			else if (timeFire > 0.2f && timeFire < 0.3f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire3.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire3.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire3.get());
 			else if (timeFire > 0.3f && timeFire < 0.4f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire4.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire4.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire4.get());
 			else if (timeFire > 0.4f && timeFire < 0.5f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire5.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire5.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire5.get());
 			else if (timeFire > 0.5f && timeFire < 0.6f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire6.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire6.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire6.get());
 			else if (timeFire > 0.6f && timeFire < 0.7f)
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire7.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire7.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 7 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire7.get());
 			else
-				DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire8.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				//DrawRotatedDecal(olc::vf2d(player->x, player->y - 10), decFire8.get(), 0, { sprFire1->width / 2.0f,sprFire1->height / 2.0f }, { 1.0f, 1.0f });
+				DrawSprite(olc::vf2d(player->x + 8 - playerSizeX / 2.0f, player->y - 12 -playerSizeY / 2.0f), sprFire8.get());
+			SetPixelMode(olc::Pixel::NORMAL);
 		}
 		//=========================================================================================================================================================
 		
-		DrawString(olc::vi2d(ScreenWidth() - 100, 5), "Attempts: " + std::to_string(nLevelAttempts), olc::WHITE); // Show level attempts on screen
+		DrawString(olc::vi2d(ScreenWidth() - 130, 5), "Level: " + std::to_string(nCurrentLevel + 1), olc::WHITE); // Show level
+		DrawString(olc::vi2d(ScreenWidth() - 130, 15), "Attempts: " + std::to_string(nLevelAttempts), olc::WHITE); // Show level attempts on screen
 
 		if (!run)
 		{
@@ -436,8 +452,33 @@ public:
 
 		if (player->bDead)
 		{
-			DrawString(olc::vi2d(ScreenWidth() / 3, ScreenHeight() / 3), "You are dead!\nPress SPACE to try again!", olc::BLUE, 2);
+			SetPixelMode(olc::Pixel::ALPHA);
+			olc::Pixel p(64, 64, 64, 205);
+			FillRect(olc::vi2d(ScreenWidth() / 5 - 10, ScreenHeight() / 3 - 30), olc::vi2d(630, 70), p);
+			SetPixelMode(olc::Pixel::NORMAL);
+			DrawString(olc::vi2d(ScreenWidth() / 5, ScreenHeight() / 3 - 20), "You are dead!\nPress SPACE to try again!", olc::DARK_RED, 3);
 		}
+
+		if (bLevelSuccess)
+		{
+			if (nCurrentLevel != vLevels.size() - 1)
+			{
+				SetPixelMode(olc::Pixel::ALPHA);
+				olc::Pixel p(64, 64, 64, 205);
+				FillRect(olc::vi2d(ScreenWidth() / 5 - 10, ScreenHeight() / 3 - 30), olc::vi2d(610, 70), p);
+				SetPixelMode(olc::Pixel::NORMAL);
+				DrawString(olc::vi2d(ScreenWidth() / 5, ScreenHeight() / 3 - 20), "You beat the level!\nPress SPACE to continue!", olc::CYAN, 3);
+			}
+			else
+			{
+				SetPixelMode(olc::Pixel::ALPHA);
+				olc::Pixel p(64, 64, 64, 205);
+				FillRect(olc::vi2d(ScreenWidth() / 5 - 10, ScreenHeight() / 3 - 30), olc::vi2d(600, 140), p);
+				SetPixelMode(olc::Pixel::NORMAL);
+				DrawString(olc::vi2d(ScreenWidth() / 5, ScreenHeight() / 3 - 20), "You beat the WHOLE GAME!\nCONGRATULATIONS!!!\nThere is no prize,\nbut maybe there will be\nin the future!!!", olc::CYAN, 3);
+			}
+		}
+
 		return true;
 	}
 
@@ -481,66 +522,89 @@ public:
 		run = false;
 		fTimeSoFar = 0.0f;
 		pathCnt = 1;
-		player->x = player->initX;
-		player->y = player->initY;
-
+		player->x = vLevels[nCurrentLevel]->fPlayerInitX;
+		player->y = vLevels[nCurrentLevel]->fPlayerInitY;
+		bLevelSuccess = false;
+		
+		// Reset path
+		int vecSize = player->vPath.size();
+		for (int i = 0; i < vecSize; i++)
+		{
+				player->vPath.pop_back();
+		}
+		player->vPath.push_back(olc::vf2d(vLevels[nCurrentLevel]->fPlayerInitX, vLevels[nCurrentLevel]->fPlayerInitY));
 	}
 
 	void ChangeLevel(int n)
 	{
-		currentLevel = levels[n];
-	}
-
-	bool LoadLevelsFromFile(int numLevels)
-	{
-		for (int i = 0; i < numLevels; i++) // Load every level into RAM
+		if (n >= 0 && n < vLevels.size())
 		{
-			std::ifstream inFile(std::to_string(i) + ".lvl", std::ios::in | std::ios::binary);
-			if (inFile.is_open())
-			{
-				int caseTest;
-				inFile >> caseTest;
-				switch (caseTest)
-				{
-				case 0: // Barrier no damage
-					float bX, bY, bWX, bWY;
-					inFile >> bX >> bY >> bWX >> bWY;
-					levels[i].barriers.push_back(new Barrier(bX, bY, bWX, bWY, false, 0));
-					break;
-				case 1: // Barrier with Damage
-					float bX1, bY1, bWX1, bWY1, bDmg1;
-					inFile >> bX1 >> bY1 >> bWX1 >> bWY1 >> bDmg1;
-					levels[i].barriers.push_back(new Barrier(bX1, bY1, bWX1, bWY1, true, bDmg1));
-					break;
-				case 2: // Enemy type 1
-					float initX, initY, speed;
-					int health;
-					break;
-				}
-
-				return true;
-			}
-			else
-			{
-				std::cout << "Unable to open file." << std::endl;
-				inFile.close();
-				return false;
-			}
+			nCurrentLevel = n;
+			player->vPath.push_back(olc::vf2d(vLevels[nCurrentLevel]->fPlayerInitX, vLevels[nCurrentLevel]->fPlayerInitY));
 		}
 	}
+
+	//bool LoadLevelsFromFile(int numLevels)
+	//{
+	//	for (int i = 0; i < numLevels; i++) // Load every level into RAM
+	//	{
+	//		std::ifstream inFile(std::to_string(i) + ".lvl", std::ios::in | std::ios::binary);
+	//		if (inFile.is_open())
+	//		{
+	//			int caseTest;
+	//			inFile >> caseTest;
+	//			switch (caseTest)
+	//			{
+	//			case 0: // Barrier no damage
+	//				float bX, bY, bWX, bWY;
+	//				inFile >> bX >> bY >> bWX >> bWY;
+	//				levels[i].barriers.push_back(new Barrier(bX, bY, bWX, bWY, false, 0));
+	//				break;
+	//			case 1: // Barrier with Damage
+	//				float bX1, bY1, bWX1, bWY1, bDmg1;
+	//				inFile >> bX1 >> bY1 >> bWX1 >> bWY1 >> bDmg1;
+	//				levels[i].barriers.push_back(new Barrier(bX1, bY1, bWX1, bWY1, true, bDmg1));
+	//				break;
+	//			case 2: // Enemy type 1
+	//				float initX, initY, speed;
+	//				int health;
+	//				break;
+	//			}
+
+	//			return true;
+	//		}
+	//		else
+	//		{
+	//			std::cout << "Unable to open file." << std::endl;
+	//			inFile.close();
+	//			return false;
+	//		}
+	//	}
+	//}
 
 	bool BarrierCollisionDetect(Barrier* b)
 	{
-		if (player->x < b->pos.x + b->size.x && player->x + (sprBody->width * 0.03f) > b->pos.x
-			&& player->y < b->pos.y + b->size.y && player->y + (sprBody->height * 2) > b->pos.y)
-		{
-			run = false;
-			player->vx = 0.0f;
-			player->vy = 0.0f;
+		if (player->x - playerSizeX / 2.0f < b->pos.x + b->size.x && player->x + playerSizeX / 2.0f > b->pos.x
+			&& player->y - playerSizeY / 2.0f < b->pos.y + b->size.y && player->y + playerSizeY / 2.0f > b->pos.y)
 			return true;
-		}
 		else
 			return false;
+	}
+
+	bool ExitCollisionDetect(Exit* b)
+	{
+		return (player->x < b->pos.x + b->size.x && player->x > b->pos.x
+			&& player->y < b->pos.y + b->size.y && player->y > b->pos.y);
+	}
+
+	bool PointVsRect(const olc::vf2d& p, Barrier* r)
+	{
+		return (p.x >= r->pos.x && p.y >= r->pos.y && p.x < r->pos.x + r->size.x && p.y < r->pos.y + r->size.y);
+	}
+
+	bool RectVsRect(const Machine* r1, const Barrier* r2)
+	{
+		return (r1->x < r2->pos.x + r2->size.x && r1->x + playerSizeX > r2->pos.x && r1->y < r2->pos.y + r2->size.y && r1->y + playerSizeY > r2->pos.y);
 	}
 };
 
