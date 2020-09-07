@@ -1,6 +1,0 @@
-Sort of like clash of clans, but the idea is sort of going away from that now.
-Levels consist of increasing number of defenses on the map. And coins/ upgrades/ power ups(?).
-Goal is to get your machine from start to finish without being destroyed.
-Player can draw their path with the mouse. ex. can choose to go straight for the goal or pickup coins and stuff along the way.
-Player machine can maybe shoot automatically, shoot manually with mouse, or combination with limited ammo count, with more being able to be picked up along the way, if player chooses to draw path with ammo.
-Barriers and enemy defenses can block your path. Some can make you start over if you hit them maybe?
